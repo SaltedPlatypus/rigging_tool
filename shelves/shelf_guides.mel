@@ -30,7 +30,7 @@ global proc shelf_guides () {
         -annotation "Generate Guides."
         -label "guide_generator"
         -command "import UI;UI.main()"
-        -mi "Documentation" ("import maya.cmds;maya.cmds.showHelp(\"http://morganloomis.com/tool/ml_toggleVisibility\",absolute=True)") -mip 0
+        -mi "Documentation" ("import maya.cmds;") -mip 0
         -image1 "guide_generator.png";
    
 }
