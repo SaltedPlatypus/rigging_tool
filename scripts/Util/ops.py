@@ -4,6 +4,7 @@ from maya import cmds
 
 import math
 
+
 def revert_API_matrix_types(om2_mmatrix):
     """
     Revert Maya.api.OpenMaya to maya.OpenMaya MMatrix() object type.
@@ -312,70 +313,69 @@ def build_matrix_from_vectors(translate=(0,0,0),xAxis=(1,0,0),yAxis=(0,1,0),zAxi
     return matrix
 
 
-def buildRotation(aimVector, upVector=(0, 1, 0), aimAxis='x', upAxis='y'):
+def buildRotation(aim_vector, up_vector=(0, 1, 0), aim_axis='x', up_axis='y'):
     """
-    bungnoid's buildRotation() function, integrated into my rigging tool.
+    # modified function from Grant Laker's repository under MIT License.
     Args:
-        aimVector:
-        upVector:
-        aimAxis:
-        upAxis:
+        aim_vector:
+        up_vector:
+        aim_axis:
+        up_axis:
 
     Returns:
 
     """
 
     # Check negative axis
-    negAim = False
-    negUp = False
-    if aimAxis[0] == '-':
-        aimAxis = aimAxis[1]
-        negAim = True
-    if upAxis[0] == '-':
-        upAxis = upAxis[1]
-        negUp = True
+    negate_aim_axis = False
+    negate_up_vector = False
+    if aim_axis[0] == '-':
+        aim_axis = aim_axis[1]
+        negate_aim_axis = True
+    if up_axis[0] == '-':
+        up_axis = up_axis[1]
+        negate_up_vector = True
 
     # Check valid axis
-    axisList = ['x', 'y', 'z']
+    axis_list = ['x', 'y', 'z']
 
-    if not axisList.count(aimAxis):
-        raise Exception('Aim axis is not valid!')
-    if not axisList.count(upAxis):
-        raise Exception('Up axis is not valid!')
-    if aimAxis == upAxis:
-        raise Exception('Aim and Up axis must be unique!')
+    if not axis_list.count(aim_axis):
+        raise Exception('invalid aim axis')
+    if not axis_list.count(up_axis):
+        raise Exception('invalid up axis')
+    if aim_axis == up_axis:
+        raise Exception('aim and up axis are not unique.')
 
-    # Determine cross axis
-    axisList.remove(aimAxis)
-    axisList.remove(upAxis)
-    crossAxis = axisList[0]
+    # calculate cross axis
+    axis_list.remove(aim_axis)
+    axis_list.remove(up_axis)
+    cross_axis = axis_list[0]
 
-    # Normaize aimVector
-    aimVector = normalise_vector(aimVector)
-    if negAim:
-        aimVector = (-aimVector[0], -aimVector[1], -aimVector[2])
-    # Normaize upVector
-    upVector = normalise_vector(upVector)
-    if negUp:
-        upVector = (-upVector[0], -upVector[1], -upVector[2])
+    aim_vector = normalise_vector(aim_vector)
+    if negate_aim_axis:
+        aim_vector = (-aim_vector[0], -aim_vector[1], -aim_vector[2])
+
+    up_vector = normalise_vector(up_vector)
+    if negate_up_vector:
+        up_vector = (-up_vector[0], -up_vector[1], -up_vector[2])
 
     # Get cross product vector
-    crossVector = (0, 0, 0)
+    cross_vector = (0, 0, 0)
 
-    if (aimAxis == 'x' and upAxis == 'z') or (aimAxis == 'z' and upAxis == 'y'):
-        crossVector = cross_product(upVector, aimVector)
+    if (aim_axis == 'x' and up_axis == 'z') or (aim_axis == 'z' and up_axis == 'y'):
+        cross_vector = cross_product(up_vector, aim_vector)
     else:
-        crossVector = cross_product(aimVector, upVector)
+        cross_vector = cross_product(aim_vector, up_vector)
     # Recalculate upVector (orthogonalize)
-    if (aimAxis == 'x' and upAxis == 'z') or (aimAxis == 'z' and upAxis == 'y'):
-        upVector = cross_product(aimVector, crossVector)
+    if (aim_axis == 'x' and up_axis == 'z') or (aim_axis == 'z' and up_axis == 'y'):
+        up_vector = cross_product(aim_vector, cross_vector)
     else:
-        upVector = cross_product(crossVector, aimVector)
+        up_vector = cross_product(cross_vector, aim_vector)
 
     # Build axis dictionary
-    axisDict = {aimAxis: aimVector, upAxis: upVector, crossAxis: crossVector}
+    axis_dict = {aim_axis: aim_vector, up_axis: up_vector, cross_axis: cross_vector}
     # Build rotation matrix
-    mat = build_matrix_from_vectors(xAxis=axisDict['x'], yAxis=axisDict['y'], zAxis=axisDict['z'])
+    mat = build_matrix_from_vectors(xAxis=axis_dict['x'], yAxis=axis_dict['y'], zAxis=axis_dict['z'])
 
     # Return rotation matrix
     return mat

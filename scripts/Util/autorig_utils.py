@@ -156,8 +156,8 @@ def fix_joint_orientations(joint, aim_axis="x", up_axis="y", up_vector=(0, 1, 0)
         aim_vector = ops.offset_vector(pos_1, pos_2)
 
         # main target mat
-        target_mat = ops.buildRotation(aim_vector, upVector=up_vector,
-                                       aimAxis=aim_axis, upAxis=up_axis)
+        target_mat = ops.buildRotation(aim_vector, up_vector=up_vector,
+                                       aim_axis=aim_axis, up_axis=up_axis)
 
 
         ori_mat = target_mat * parent_jnt_mat.inverse()
