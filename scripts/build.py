@@ -188,6 +188,13 @@ def build_skeleton(generated_guide_data):
 
 
 def generate_ik_rig(ns, guide_type, ordered_joints):
+    """
+    Taking the namesapce, the type of guide e.g.arm and the list of ordereed joints, generate our IK rig.
+    :param ns: namespace
+    :param guide_type: guide type
+    :param ordered_joints: list of ordered joints
+    :return: None
+    """
 
     if guide_type != "arm":
         return
@@ -195,12 +202,36 @@ def generate_ik_rig(ns, guide_type, ordered_joints):
     chain_root = ordered_joints[0]
     chain_child = ordered_joints[-1]
 
-    autorig_utils.duplicate_joint(chain_root, name="IK_")  # duplicate the joints to create IK skeleton.
+    dup_joint = autorig_utils.duplicate_joint(chain_root, name="IK_")  # duplicate the joints to create IK skeleton.
 
+    nested_joints = cmds.listRelatives(dup_joint, allDescendents=True, type="joint") or []
 
+    if len(nested_joints) != 3:
+        raise Exception("error generating IK: IK joint chain != 3")
+
+    ik_handle_name = ns+"_IKHandle"
+    ik_effector_name = ns+"_IKEffector"
+
+    ik_handle = cmds.ikHandle(
+        name=ik_handle_name,
+        startJoint=dup_joint,
+        endEffector=nested_joints[2],
+        solver="ikRPsolver"
+    )
+
+    ik_effector = ik_handle[1]
+    cmds.rename(ik_effector, ik_effector_name)
+
+    autorig_utils.position_pole_vector(ik_handle, f=False)
 
 
 def build_rig(ns, guide_type):
+    """
+    Builds out our rig (full rig).
+    :param ns: namespace
+    :param guide_type: type of guide.
+    :return: None
+    """
     # main our control rig from our skeleton.
     items = autorig_utils.search_ns_items(ns)
 

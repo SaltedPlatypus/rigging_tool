@@ -33,7 +33,7 @@ class GuideUI:
         self.json = new_json
 
     def read_definition(self):
-        guide_data = utils.read_definition(self.json, "arm", "head")
+        guide_data = utils.read_definition(self.json, "arm")  # head
         self.guide_data = guide_data
 
     def prepare_scene(self):

@@ -6,6 +6,8 @@ import types
 import os
 import re
 
+from . import data
+
 CACHE_FOLDER = os.path.join(__file__, "../../../cache")
 
 
@@ -179,7 +181,6 @@ def read_definition(_json, *guides, def_type="biped"):
     return guide_data
 
 
-
 def open_definition(def_name):
     """
     Generic read from json def.
@@ -196,17 +197,41 @@ def open_definition(def_name):
     json_file_dir = check_and_return_cache_folder()
 
     if os.path.exists(json_file_dir):
-        for file in os.listdir(json_file_dir):
-            if def_name in file:
-                maya.utils.executeDeferred('print("found existing .json file.")')
-                with open(os.path.join(json_file_dir, file), "r") as json_file:
-                    loaded_json = json.load(json_file)
-                    return loaded_json
-            else:
-                maya.utils.executeDeferred('print("{} not found.")'.format(def_name))
-                return False
-    else:
-        print(f"error getting {json_file_dir}")
+        print(os.listdir(json_file_dir))
+
+    for file in os.listdir(json_file_dir):
+        if def_name in file:
+            with open(os.path.join(json_file_dir, file), "r") as json_file:
+                loaded_json = json.load(json_file)
+                return loaded_json
+
+    generate_new_default_definition()
+
+    for file in os.listdir(json_file_dir):
+        if def_name in file:
+            with open(os.path.join(json_file_dir, file), "r") as json_file:
+                loaded_json = json.load(json_file)
+                return loaded_json
+
+    return
+
+
+
+def generate_new_default_definition(directory=CACHE_FOLDER, filename="guides.json"):
+    """
+    Generally, we would run this if utils.open_definition returns empty
+    :return:
+    """
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    file_path = os.path.join(directory, filename)
+
+    with open(file_path, 'w') as f:
+        json.dump(data.guide_data(), f, indent=4)
+
+    print(f"Empty JSON file created at: {file_path}")
 
 
 def check_and_return_cache_folder():
