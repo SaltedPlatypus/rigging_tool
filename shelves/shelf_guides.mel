@@ -1,0 +1,36 @@
+global proc shelf_guides () {
+    global string $gBuffStr ;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -enableBackground 0
+        -align "center"
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -image "guide_generator.png"
+        -annotation "Generate Guides."
+        -label "guide_generator"
+        -command "import UI;UI.main()"
+        -mi "Documentation" ("import maya.cmds;maya.cmds.showHelp(\"http://morganloomis.com/tool/ml_toggleVisibility\",absolute=True)") -mip 0
+        -image1 "guide_generator.png";
+   
+}
