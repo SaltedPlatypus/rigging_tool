@@ -154,8 +154,8 @@ def dictionary_search(d, *match_keys):
 def read_definition(_json, *guides, def_type="biped"):
     """
     Not a user input, but a generated key: value pair generated from UI input. E.g:
-    If user selects an arm guide.
-    Can select multiple and generate.
+    Based on number of guide arguments *guides, generate a list entry with data from the matching value entry
+    in the json data (should it exist).
     Args:
         _json(dict): Dictionary containing extracted json file data.
         *guides(any): *args of any number of strings.

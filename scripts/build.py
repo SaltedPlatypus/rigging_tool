@@ -4,6 +4,15 @@ import maya.OpenMaya as om
 from Util import utils
 from Util import autorig_utils
 
+try:
+    from Util import utils
+    from Util import  autorig_utils
+except Exception as e:
+    import sys
+    sys.path.append("C:/Users/Thomas Killick/Documents/maya/modules/rigging_tool")
+    from Util import utils
+    from Util import autorig_utils
+
 def prep_scene(guide_data, root="Guides"):
     """
     Run once per session.
@@ -57,11 +66,10 @@ def generate_guide_from_cache(guide_data, root_ns="Guides", rigdef_ns="rigdef_1"
         root_ns:
         rigdef_ns:
 
-    Returns:
+    Returns: A dictionary with a single key: value pair where 'guide' is the type of guide created and 'created_objects'
+    is a list of the created object(s) associated with the guide.
 
     """
-
-    guide_root = ""
 
     cmds.namespace(set=":")
 
@@ -72,8 +80,7 @@ def generate_guide_from_cache(guide_data, root_ns="Guides", rigdef_ns="rigdef_1"
 
     matrices = []
     guide_names = []
-
-    generated_guides = {}
+    # generated_guides = {}
 
     # in 3.7 dictionaries are ordered.
     for guide, value in guide_type_values.items():
@@ -116,28 +123,33 @@ def generate_guide_from_cache(guide_data, root_ns="Guides", rigdef_ns="rigdef_1"
 
         index += 1
 
-    # generated_guides = {guide_type_name: created_objects}
-    generated_guides[guide_type_name] = created_objects
+    # generated_guide = {guide_type_name: created_objects}
+
+    return {guide_type_name: created_objects}
+
+def ui_guides(list_of_guide_entries):
+    """
+    list of our selected guide entries passed from the UI menu.
+
+    :param list_of_guide_entries:
+    :return:
+    """
+
+    list_of_generated_guides = []  # list of our guides that are generated.
+
+    for selected_guide in list_of_guide_entries:
+        list_of_generated_guides.append(generate_guide_from_cache(selected_guide))
+
+    for generated in list_of_generated_guides:
+        print(generated)
 
     return generated_guides
 
-"""def ui_guides(guide_data):
-    # TODO THIS IS JUST TEMPORARY. Replace with UI functions, generate guide only should have relevant guide input.
 
-    generated_guides = []
-
-    arm = guide_data[0]
-
-    generated_guides.append(generate_guide_from_cache(arm))
-    # generated_guide = generate_guide(arm)
-
-    return generated_guides"""
-
-
-def build_skeleton(generated_guide_data):
+def build_skeleton(current_guide_data):
     """
     Builds out skeleton (joint chain) from our provided guides data.
-    :param generated_guide_data: dict
+    :param current_guide_data: dict
     :return: None
     """
     # main our joints from guides
@@ -151,17 +163,19 @@ def build_skeleton(generated_guide_data):
 
     joints = []
     guide_rotators = []
-    guide = generated_guide_data
 
-    cmds.select(clear=True)
-    autorig_utils.create_ns(ns=list(guide.keys())[0], full_parent_path=root)
+    cmds.select(clear=True)  # clear our current selection
 
-    if cmds.namespace(ex=f"{root}:{list(guide.keys())[0]}"):
-        cmds.namespace(set=f"{root}:{list(guide.keys())[0]}")
+    current_guide_type = list(current_guide_data.keys())[0]  # e.g. "arm"
 
-    autorig_utils.clear_objects(root, list(generated_guide_data.keys())[0])
+    autorig_utils.create_ns(ns=current_guide_type, full_parent_path=root)  # create our namespace to contain guides.
 
-    for guide_name, guides in guide.items():
+    if cmds.namespace(ex=f"{root}:{current_guide_type}"):
+        cmds.namespace(set=f"{root}:{current_guide_type}")  # set it as active.
+
+    autorig_utils.clear_objects(root, list(current_guide_data.keys())[0])
+
+    for guide_name, guides in current_guide_data.items():
         for i, transforms in enumerate(guides):
             joint_name = transforms[0].split(":")[-1]
             # guide_translation = cmds.xform(transforms[0], q=True, os=True, t=True)
@@ -254,11 +268,24 @@ def skin():
 def pose():
     pass
 
+new_json = utils.open_definition("guides")
+
+guides_to_generate = utils.read_definition(new_json, "arm", "leg") # we actually want read_definition to be read every time we select
+# a guide from the UI
+
+prep_scene(guides_to_generate) # prepare our scene for each guide entry
+
+generated_guides = ui_guides(guides_to_generate)
+
+for guide in generated_guides:
+    build_skeleton(guide)
 
 """# DATA HANDLING
 new_json = utils.open_definition("guides")
-guide_data = utils.read_definition(new_json, "arm", "head")
+data = utils.read_definition(new_json, "arm", "head")"""
 
+
+"""
 # PREPARE NAMESPACES
 prep_scene(guide_data)
 
@@ -268,3 +295,31 @@ generated_guides = ui_guides(guide_data)
 build_skeleton(generated_guides)"""
 
 """build_rig("skeleton_def:arm", "arm")"""
+
+"""
+guide_data is:
+
+ [
+    {'arm': 
+        {'joint0': 
+            {'translateOffsetXYZ': [0.0, 0.0, 0.0], 
+            'orientOffsetXYZ': [0.0, 15.0, 0.0], 
+            'scaleXYZ': [1.0, 1.0, 1.0]}, 
+        'joint1': 
+            {'translateOffsetXYZ': [5.0, 0.0, 0.0], 
+            'orientOffsetXYZ': [0.0, -27.771, 0.0], 
+            'scaleXYZ': [1.0, 1.0, 1.0], 
+            'parent': 'joint0'}, 
+        'joint2': 
+            {'translateOffsetXYZ': [5.0, 0.0, 0.0], 
+            'orientOffsetXYZ': [0.0, 0.0, 0.0], 
+            'scaleXYZ': [1.0, 1.0, 1.0], 
+            'parent': 'joint1'}
+        }
+    }
+]
+
+guide_data[0] refers to the dictionary entry above
+
+
+"""
