@@ -57,6 +57,7 @@ def prep_scene(guide_data, root="Guides"):
         autorig_utils.create_ns(ns=ns, full_parent_path=f"{root}:{rig_def_ns}")
         autorig_utils.relocate_ns(src_ns=ns, parent=rig_def_ns, merge=False)
 
+
 # TODO: GENERATES FROM CACHE ONLY
 def generate_guide_from_cache(guide_data, root_ns="Guides", rigdef_ns="rigdef_1"):
     """
@@ -127,6 +128,7 @@ def generate_guide_from_cache(guide_data, root_ns="Guides", rigdef_ns="rigdef_1"
 
     return {guide_type_name: created_objects}
 
+
 def ui_guides(list_of_guide_entries):
     """
     list of our selected guide entries passed from the UI menu.
@@ -143,7 +145,7 @@ def ui_guides(list_of_guide_entries):
     for generated in list_of_generated_guides:
         print(generated)
 
-    return generated_guides
+    return list_of_generated_guides
 
 
 def build_skeleton(current_guide_data):
@@ -168,12 +170,14 @@ def build_skeleton(current_guide_data):
 
     current_guide_type = list(current_guide_data.keys())[0]  # e.g. "arm"
 
+    print("current: ", current_guide_type)
+
     autorig_utils.create_ns(ns=current_guide_type, full_parent_path=root)  # create our namespace to contain guides.
 
     if cmds.namespace(ex=f"{root}:{current_guide_type}"):
         cmds.namespace(set=f"{root}:{current_guide_type}")  # set it as active.
 
-    autorig_utils.clear_objects(root, list(current_guide_data.keys())[0])
+    autorig_utils.clear_objects(f"{root}:{current_guide_type}", joints_only=True)
 
     for guide_name, guides in current_guide_data.items():
         for i, transforms in enumerate(guides):
@@ -268,9 +272,9 @@ def skin():
 def pose():
     pass
 
-new_json = utils.open_definition("guides")
+"""new_json = utils.open_definition("guides")
 
-guides_to_generate = utils.read_definition(new_json, "arm", "leg") # we actually want read_definition to be read every time we select
+guides_to_generate = utils.read_definition(new_json, "arm") # we actually want read_definition to be read every time we select
 # a guide from the UI
 
 prep_scene(guides_to_generate) # prepare our scene for each guide entry
@@ -278,7 +282,11 @@ prep_scene(guides_to_generate) # prepare our scene for each guide entry
 generated_guides = ui_guides(guides_to_generate)
 
 for guide in generated_guides:
-    build_skeleton(guide)
+    build_skeleton(guide)"""
+
+
+
+
 
 """# DATA HANDLING
 new_json = utils.open_definition("guides")

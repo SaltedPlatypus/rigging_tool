@@ -2,6 +2,8 @@ from maya import cmds
 import maya.OpenMaya as om
 import maya.utils
 
+from itertools import chain
+
 # from . import utils
 # from . import ops
 
@@ -319,6 +321,7 @@ def relocate_ns(src_ns, parent=None, find_all=True, merge=True, force=True):
             maya.utils.executeDeferred('print("namespace: ({}) already exists at target location. ")'.format(src_ns))
     else:
         dst_ns = [path for path in ns_list if path.endswith(parent)]
+
         if not cmds.namespace(ex=f"{dst_ns[0]}:{src_ns}"):
             for ns in ns_list:
                 if ns.endswith(src_ns):  # get our src_ns e.g. "arm"
@@ -330,6 +333,7 @@ def relocate_ns(src_ns, parent=None, find_all=True, merge=True, force=True):
                     cmds.namespace(mv=(ns, dst_ns), f=True)
                     cmds.namespace(rm=ns)
         else:
+
             maya.utils.executeDeferred('print("namespace: ({}) already exists at target location. ")'.format(src_ns))
             if merge:
                 filter_existing = []
@@ -484,111 +488,102 @@ def position_pole_vector(ik, f=True, distance=1.0):
     return pole_vector_position
 
 
-def traverse_hierarchy(joint, delete=False):
-    """
-    Must be called in a loop, we yield the current joint in the traversal.
-    :param joint:
-    :param ascend:
-    :return:
-    """
-
-    joints_to_return = []
-    parent_relatives = cmds.listRelatives(joint, ap=True)
-
-    if not parent_relatives:
-
-        start_joint = joint
-        next_joint = start_joint
-
-        while next_joint:
-
-            parent_list = cmds.listRelatives(next_joint, p=True) or []
-            parent_joints = cmds.ls(parent_list, type="joint") or []
-
-            if parent_joints:
-                if delete:
-                    if cmds.objExists(next_joint):
-                        cmds.delete(next_joint)
-                next_joint = parent_joints[0]  # assign the parent joint as next joint.
-
-            else:
-                joints_to_return.append(next_joint)
-                next_joint = None  # assign return joint and end the loop.
-
-        return joints_to_return
-
-    else:
-
-        return []  # once we are at the child return none. If it returns none just delete the queried joint.
-
-
-def get_end_joint(joint):
+def get_end_object(current_object, joints_only=False):
     """
     Check if current joint is the top joint in a chain, then from that, find the end joint.
-    :param joint:
+    :param current_object:
     :return:
     """
 
-    end_joint = None
-    relatives = cmds.listRelatives(joint, ap=True, type="joint")
-
+    end_object = None
+    if joints_only:
+        relatives = cmds.listRelatives(current_object, ap=True, type="joint")
+    else:
+        relatives = cmds.listRelatives(current_object, ap=True)
 
     if not relatives:
-        start_joint = joint
-        next_joint = start_joint
+        start_object = current_object
+        next_object = start_object
 
-        while(next_joint):
+        while(next_object):
 
-            child_list = cmds.listRelatives(next_joint, c=True) or []  # return empty list
-            child_joints = cmds.ls(child_list, type="joint") or []
+            child_list = cmds.listRelatives(next_object, c=True) or []  # return empty list
 
-            if child_joints:
-                next_joint = child_joints[0]
+            if joints_only:
+                child_objects = cmds.ls(child_list, type="joint") or []
             else:
-                end_joint = next_joint
-                next_joint = None
+                child_objects = cmds.ls(child_list, type="joint") + \
+                                cmds.ls(child_list, type="transform") or []
 
-        return end_joint
+            if child_objects:
+                next_object = child_objects[0]
+            else:
+                end_object = next_object
+                next_object = None
+
+        return end_object
 
     else:
 
         return []
 
 
-
-def clear_joints(name_space):
+def traverse_hierarchy(current_object, ascend=False, joints_only=False):
     """
-    TODO: Currently only works with joint objects. Need to generalise more for different object(s)
-    Clears our objects under the namespace.
-    :param root: namespace root
-    :param guide_type: namespace guide type.
+    Must be called in a loop, we yield the current joint in the traversal.
+    :param current_object:
+    :param ascend:
     :return:
     """
 
-    # get a list of objecets under namespace. If joint recursively upwards delete the joints.
-    # we'd have to also remove any connected objects as well before removing the joints.
+    objects_to_return = []
 
-    joints_to_clear = cmds.namespaceInfo(name_space, ls=True)  # list all our object(s) in the namespace.
+    if not cmds.objExists(current_object):
+        return objects_to_return
 
-    if joints_to_clear:
-        end_joint = get_end_joint(joints_to_clear[0])
+    if ascend:
+        current_object = get_end_object(current_object)
 
-        traverse_hierarchy(end_joint, delete=True)
+        # Initialize the object to start the loop
+        next_object = current_object
+
+        while next_object:
+            parent_list = cmds.listRelatives(next_object, p=True) or []
+
+            if joints_only:
+                parent_objects = cmds.ls(parent_list, type="joint") or []
+            else:
+                parent_objects = list(chain(cmds.ls(parent_list, type="joint"),
+                           cmds.ls(parent_list, type="transform")))
+
+            if parent_objects:
+                objects_to_return.append(next_object)
+                next_object = parent_objects[0]
+            else:
+                objects_to_return.append(next_object)
+                next_object = None
+
+    else:
+        objects_to_return.append(current_object)
+
+    return objects_to_return
 
 
+def clear_objects(name_space, joints_only=False):
+    """
+    :param name_space: Target namespace to clear object(s) under.
+    :return: None.
+    """
 
+    objects_to_clear = cmds.namespaceInfo(name_space, ls=True)
 
+    print_list = []
+    if objects_to_clear:
+        for _object in objects_to_clear:
+            target_objects = traverse_hierarchy(_object, ascend=True, joints_only=joints_only)
+            for t_object in target_objects:
+                print_list.append(t_object)
+                cmds.delete(t_object)
 
+    cmds.evalDeferred(lambda: print(f"Deleted {print_list} object(s)"))
 
-
-    """if joints_to_clear:
-        for joint in joints_to_clear:
-            joint_to_delete = traverse_hierarchy(joint, ascend=True)
-            print(joint_to_delete)
-            joint_to_delete = traverse_hierarchy(joint, ascend=True)  # want to ascend from the end.
-            if joint_to_delete:
-                # cmds.delete(joint_to_delete)
-                print("bla")"""
-
-
-clear_joints(name_space="hello")
