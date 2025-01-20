@@ -170,8 +170,6 @@ def build_skeleton(current_guide_data):
 
     current_guide_type = list(current_guide_data.keys())[0]  # e.g. "arm"
 
-    print("current: ", current_guide_type)
-
     autorig_utils.create_ns(ns=current_guide_type, full_parent_path=root)  # create our namespace to contain guides.
 
     if cmds.namespace(ex=f"{root}:{current_guide_type}"):
@@ -208,39 +206,44 @@ def build_skeleton(current_guide_data):
 def generate_ik_rig(ns, guide_type, ordered_joints):
     """
     Taking the namesapce, the type of guide e.g.arm and the list of ordereed joints, generate our IK rig.
-    :param ns: namespace
+    :param ns: namespace root.
     :param guide_type: guide type
     :param ordered_joints: list of ordered joints
     :return: None
     """
 
-    if guide_type != "arm":
+    if guide_type != "arm":  #TODO: modify
         return
 
     chain_root = ordered_joints[0]
     chain_child = ordered_joints[-1]
 
-    dup_joint = autorig_utils.duplicate_joint(chain_root, name="IK_")  # duplicate the joints to create IK skeleton.
+    cmds.namespace(set=f"{guide_type}")  # set our namespace to add current duplicate to.
 
-    nested_joints = cmds.listRelatives(dup_joint, allDescendents=True, type="joint") or []
+    duplicated_joints = autorig_utils.chain_duplication(chain_root, prefix="ik_")
 
-    if len(nested_joints) != 3:
+    if len(duplicated_joints) != 3:
         raise Exception("error generating IK: IK joint chain != 3")
 
-    ik_handle_name = ns+"_IKHandle"
-    ik_effector_name = ns+"_IKEffector"
+    ik_handle_name = "_IKHandle"
+    ik_effector_name = "_IKEffector"
 
     ik_handle = cmds.ikHandle(
         name=ik_handle_name,
-        startJoint=dup_joint,
-        endEffector=nested_joints[2],
+        startJoint=duplicated_joints[0],
+        endEffector=duplicated_joints[-1],
         solver="ikRPsolver"
     )
 
     ik_effector = ik_handle[1]
+    handle = ik_handle[0]
+    print(cmds.nodeType(handle))
+    print(cmds.listConnections(handle+'.ikSolver', s=True, d=False)[0])
+
     cmds.rename(ik_effector, ik_effector_name)
 
-    autorig_utils.position_pole_vector(ik_handle, f=False)
+    autorig_utils.position_pole_vector(handle, f=False)
+    cmds.namespace(set=f":{ns}")  # set back to root skeleton def namespace.
 
 
 def build_rig(ns, guide_type):
@@ -251,16 +254,17 @@ def build_rig(ns, guide_type):
     :return: None
     """
     # main our control rig from our skeleton.
-    items = autorig_utils.search_ns_items(ns)
+    items = autorig_utils.search_ns_items(f"{ns}:{guide_type}")
 
     deform_joints = []
     for key, value in items.items():
         name = key.split(":")[-1]
         if "joint" in name and cmds.objectType(key) == 'joint':
-            deform_joints.append(f"{ns}:{name}")
+            deform_joints.append(f"{ns}:{guide_type}:{name}")
 
     # search ns items recursively searches DAG so very unlikely, but to prevent breakage:
     ordered_joints = autorig_utils.reorder_joints(deform_joints)
+    # print("ordered_joints: ", ordered_joints)
 
     generate_ik_rig(ns, guide_type, ordered_joints)
 
@@ -282,27 +286,24 @@ prep_scene(guides_to_generate) # prepare our scene for each guide entry
 generated_guides = ui_guides(guides_to_generate)
 
 for guide in generated_guides:
-    build_skeleton(guide)"""
-
-
-
+    build_skeleton(guide)
+    build_rig("skeleton_def", "arm")"""
 
 
 """# DATA HANDLING
 new_json = utils.open_definition("guides")
-data = utils.read_definition(new_json, "arm", "head")"""
+data = utils.read_definition(new_json, "arm")
 
 
-"""
 # PREPARE NAMESPACES
 prep_scene(guide_data)
 
 # CONSTRUCTION
 generated_guides = ui_guides(guide_data)
 
-build_skeleton(generated_guides)"""
+build_skeleton(generated_guides)
 
-"""build_rig("skeleton_def:arm", "arm")"""
+build_rig("skeleton_def:arm", "arm")"""
 
 """
 guide_data is:

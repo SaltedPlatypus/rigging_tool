@@ -5,12 +5,22 @@ import build
 
 
 def generate_guides(guide_data):
+    """
+    Call our generate_guide_from_cache() function.
+    :param guide_data:
+    :return:Dictionary with guide name: object data. See autorig_utils.
+    """
 
     result = build.generate_guide_from_cache(guide_data)
     return result
 
 
 def update_rig(generated_guides):
+    """
+    Call our build_skeleton() function.
+    :param generated_guides:
+    :return:
+    """
 
     for guide, value in generated_guides.items():
         build.build_skeleton(value)
@@ -24,6 +34,10 @@ class GuideSelectionWindow:
         self.create_ui()  # Initialize the UI
 
     def create_ui(self):
+        """
+        Create our additional guide selection window UI pop-up.
+        :return: None
+        """
         # Create a new window
         if cmds.window("guideSelectionWindow", exists=True):
             cmds.deleteUI("guideSelectionWindow", window=True)
@@ -45,6 +59,12 @@ class GuideSelectionWindow:
         cmds.showWindow(self.window)
 
     def on_generate(self, *args):
+        """
+        Call our main window's on_generate_guide_button_click() function passing in the selected
+        items from our UI.
+        :param args:
+        :return:
+        """
         # Get the selected guides
         selected_items = cmds.textScrollList(self.list_box, query=True, selectItem=True) or []
 
@@ -73,15 +93,28 @@ class GuideUI:
         self.create_ui()
 
     def open_definition(self):
+        """
+        Get json data from a .json template or cache file with the specified name.
+        :return: None (but update self.json).
+        """
         new_json = utils.open_definition("guides")
         self.json = new_json
 
     def read_definition(self):
+        """
+        Read our generated json data. Call a function that takes the self.bipedal_guide args and
+        passes to our read_definition function.
+        :return: None (but updates self.guide_data)
+        """
         guide_data = utils.read_definition(self.json,
                                            *self.bipedal_guides)  # test with more in template URGENT
         self.guide_data = guide_data
 
     def prepare_scene(self):
+        """
+        Prepare our scene with namespaces, clearing conflicts etc.
+        :return: None
+        """
         build.prep_scene(self.guide_data)
 
     def on_generate_guide_button_click(self, selected_items):
@@ -100,10 +133,20 @@ class GuideUI:
                         self.generated_guides[item] = generated_guides
 
     def open_guide_selection_window(self, *args):
+        """
+        Open a new pop-up window with a list of the guide types that are selectable.
+        Instances GuideSelectionWindow() UI object.
+        :param args: Empty
+        :return: None
+        """
         # Open the guide selection window
         GuideSelectionWindow(self, *self.bipedal_guides)
 
     def create_ui(self):
+        """
+        Create our UI main window.
+        :return: None
+        """
         if cmds.window("guideUIWindow", exists=True):
             cmds.deleteUI("guideUIWindow", window=True)  # Close the window if it already exists
 

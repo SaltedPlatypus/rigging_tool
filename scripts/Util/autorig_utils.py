@@ -17,31 +17,31 @@ except Exception as e:
     from scripts.Util import ops
 
 
-def duplicate_joint(joint, name=None):
+def obj_exists(_object):
     """
-    duplicate our joint object(s)
-    :param joint: our joint to duplicate
-    :param name: rename the joint
+    Query if object exists
+    :param _object:
     :return:
     """
 
-    if not cmds.objExists(joint):
-        raise Exception(f"{joint} does not exist.")
-    if not name:
-        name = joint+"_duplicate"
-    if cmds.objExists(str(name)):
-        raise Exception(f"{name} already exists.")
+    if not cmds.objExists(_object):
+        raise Exception (f"Queried object: {_object} does not exist!")
 
 
-    duplicated_joint = cmds.duplicate(joint)[0]
-    if name:
-        duplicated_joint = cmds.rename(duplicated_joint, name+joint)
+def is_transform(obj):
+    """
+    Check if obj is a valid transform.
+    :param obj:
+    :return:
+    """
+    # Check object exists
+    if not cmds.objExists(obj): return False
 
-    attributes = ['tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'v', 'radius']
-    for attr in attributes:
-        cmds.setAttr(duplicated_joint+"."+attr, l=False, cb=True)
+    mObject = getMObject(obj)
+    if not mObject.hasFn(om.MFn.kTransform):
+        return False
 
-    return duplicated_joint
+    return True
 
 
 def reorder_joints(joint_list):
@@ -75,6 +75,42 @@ def reorder_joints(joint_list):
         current_joint = next_joint
 
     return ordered_joints
+
+
+def get_joints_between(start_joint, end_joint=None):
+    """
+
+    :param start_joint:
+    :param prefix:
+    :param end_joint:
+    :param parent:
+    :return:
+    """
+
+    obj_exists(start_joint)
+    obj_exists(end_joint)
+
+    if start_joint == end_joint:  # length of 1.
+        return start_joint
+
+    relatives = cmds.listRelatives(start_joint, ad=True)
+    filter_joints = cmds.ls(relatives, type="joint")
+
+    if not filter_joints.count(end_joint):
+        raise Exception(f'End joint: {end_joint} is not a descendant of start joint {start_joint}')
+
+    jnt_list = [end_joint]
+
+    while(jnt_list[-1] != start_joint):
+        parent_joint = cmds.listRelatives(jnt_list[-1], p=True, pa=True)
+        if not parent_joint:
+            raise Exception(f"Returned root joint when searching for {start_joint}.")
+        jnt_list.append(parent_joint[0])
+
+    jnt_list.reverse()
+
+    return jnt_list
+
 
 def getMObject(object):
     """
@@ -447,11 +483,14 @@ def position_pole_vector(ik, f=True, distance=1.0):
     :return: pole vector position.
     """
 
+
     if cmds.objectType(ik) != "ikHandle":
         raise Exception(f"Object: '{ik}' is not of type IKHandle.")
 
-    if cmds.listConnections(ik+'.ikSolver',s=True,d=False)[0] != 'ikRPsolver':
+
+    if cmds.listConnections(ik+'.ikSolver', s=True, d=False)[0] != f'{ik}ikRPsolver':
         raise Exception(f"Object: '{ik}' is not of type ikRPsolver.")
+
 
     # get our affected ik joints.
     ik_joints = get_ik_joints(ik)
@@ -587,3 +626,102 @@ def clear_objects(name_space, joints_only=False):
 
     cmds.evalDeferred(lambda: print(f"Deleted {print_list} object(s)"))
 
+
+def duplicate_joint(joint, name=None):
+    """
+    duplicate our joint object(s)
+    :param joint: our joint to duplicate
+    :param name: rename the joint
+    :return:
+    """
+
+    if not cmds.objExists(joint):
+        raise Exception(f"{joint} does not exist.")
+    if not name:
+        name = joint+"_duplicate"
+    if cmds.objExists(str(name)):
+        raise Exception(f"{name} already exists.")
+
+    duplicated_joint = cmds.duplicate(joint, po=True, n=f"d_{joint}")[0]  # just duplicate parent.
+
+    if name:
+        duplicated_joint = cmds.rename(duplicated_joint, name)
+
+    attributes = ['tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'v', 'radius']
+    for attr in attributes:
+        cmds.setAttr(duplicated_joint+"."+attr, l=False, cb=True)
+
+    return duplicated_joint
+
+
+def chain_duplication(start_joint,
+                          prefix=None,
+                          end_joint=None,
+                          parent=None):
+    """
+
+    :param start_joint:
+    :param prefix:
+    :param end_joint:
+    :param parent:
+    :return:
+    """
+
+    duplicate_chain = []
+
+    obj_exists(start_joint)
+    if end_joint:
+        obj_exists(end_joint)
+
+    if parent:
+        obj_exists(parent)
+        if not is_transform(parent):
+            raise Exception(f'Parent object[{parent}] is not a valid transform!')
+
+    if not end_joint:
+        end_joint = get_end_object(start_joint)
+
+    joints = get_joints_between(start_joint, end_joint)
+
+    for i, joint in enumerate(joints):
+        name = None
+
+        if prefix:
+            string_end = joint.split(":")[-1]
+            name = prefix+string_end
+
+        jnt = duplicate_joint(joint, name)  # remove name for now.
+
+        if not i:
+            if not parent:
+                if cmds.listRelatives(jnt, p=True):
+                    try:
+                        cmds.parent(jnt, w=True)
+                    except Exception as e:
+                        pass
+            else:
+                try:
+                    cmds.parent(jnt, parent)
+                except Exception as e:
+                    pass
+        else:
+            try:
+                cmds.parent(jnt, duplicate_chain[-1])
+
+                # keep child transform consistent to parent scaling.
+                if not cmds.isConnected(duplicate_chain[-1]+".scale", jnt+".inverseScale"):
+                    cmds.connectAttr(duplicate_chain[-1]+".scale", jnt+".inverseScale", f=True)
+            except Exception as e:
+                raise Exception("Duplication error. Exception: " + str(e))
+
+        duplicate_chain.append(jnt)
+
+    return duplicate_chain
+
+
+"""chain = cmds.ls(type="joint")
+print(chain)
+
+duplicates = chain_duplication(chain[0], prefix="ik_")
+
+print(duplicates)"""
